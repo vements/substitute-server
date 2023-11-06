@@ -1,4 +1,25 @@
 #!/usr/bin/env python
+
+# Copyright 2023 Monster Street Systems LLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the “Software”), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
 from datetime import datetime
 from typing import Any, Callable, Optional
 
@@ -39,9 +60,9 @@ class Model:
         return dict((k, []) for k in cls.storage_keys)
 
     @classmethod
-    def random(cls) -> dict:
+    def random(cls, user_count=1, user_project_count=1, api_key_count=1) -> dict:
         db = cls.default()
-        db["user"] = users = [User.random() for _ in range(3)]
+        db["user"] = users = [User.random() for _ in range(user_count)]
         projects = db["project"]
         api_keys = db["api_key"]
         achievements = db["achievement"]
@@ -51,11 +72,18 @@ class Model:
         score = db["score"]
 
         for user in users:
-            user_projects = [Project.random(user_id=user.user_id) for _ in range(3)]
+            user_projects = [
+                Project.random(user_id=user.user_id) for _ in range(user_project_count)
+            ]
             projects.extend(user_projects)
 
             for project in user_projects:
-                api_keys.extend([ApiKey.random(project_id=project.project_id) for _ in range(10)])
+                api_keys.extend(
+                    [
+                        ApiKey.random(project_id=project.project_id, capability="rw")
+                        for _ in range(api_key_count)
+                    ]
+                )
 
                 project_achievements = [
                     Achievement.random(project_id=project.project_id) for _ in range(3)
@@ -173,8 +201,23 @@ class Model:
             ]
         }
 
-    def participant_progress(self, id: str, params: dict) -> dict:
-        return {"participant_progress": []}
+    def participant_progress(self, participant_id: str, params: dict) -> dict:
+        achievements = self.unique_achievement_ids(participant_id)
+        progress = [
+            {
+                "achievement": [
+                    a for a in self.storage["achievement"] if a.achievement_id == achievement_id
+                ][0].__dict__,
+                "progress": sum(
+                    p.value
+                    for p in self.storage["progress"]
+                    if p.participant_id == participant_id and p.achievement_id == achievement_id
+                ),
+                "iterations": 0,
+            }
+            for achievement_id in achievements
+        ]
+        return {"participant_progress": progress}
 
     def participant_scores(self, participant_id: str, params: dict) -> dict:
         scoreboards = self.unique_scoreboard_ids(participant_id)
@@ -232,6 +275,13 @@ class Model:
         )
         self.storage["score"].append(score)
         return {"insert_score_one": score.__dict__}
+
+    def unique_achievement_ids(self, participant_id: str) -> set:
+        return set(
+            progress.achievement_id
+            for progress in self.storage["progress"]
+            if progress.participant_id == participant_id
+        )
 
     def unique_scoreboard_ids(self, participant_id: str) -> set:
         return set(
