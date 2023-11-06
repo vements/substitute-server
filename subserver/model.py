@@ -24,16 +24,135 @@ from datetime import datetime
 from typing import Any, Callable, Optional
 
 from .fake import fake
+from ulid import ULID
 
-from .achievement import Achievement
-from .apikey import ApiKey
+from .counter import NextIdCounter
 from .errors import ConstraintViolation, NotFound
-from .participant import Participant
-from .progress import Progress
-from .project import Project
-from .score import Score
-from .scoreboard import Scoreboard
-from .user import User
+from .types import Achievement as AchievementRecord
+from .types import ApiKey as ApiKeyRecord
+from .types import Participant as ParticipantRecord
+from .types import Progress as ProgressRecord
+from .types import Project as ProjectRecord
+from .types import Score as ScoreRecord
+from .types import Scoreboard as ScoreboardRecord
+from .types import User as UserRecord
+
+
+class Achievement(AchievementRecord):
+    @classmethod
+    def random(cls, project_id: ULID | str, public: bool = False):
+        return cls(
+            project_id=project_id,
+            achievement_id=fake.ulid(),
+            display=fake.display("Achievement"),
+            goal=fake.pyint(),
+            repeats=fake.pyint(),
+            locked_image=fake.image_url(),
+            unlocked_image=fake.image_url(),
+            position=fake.pyint(),
+            public=public,
+            extra=fake.pydict(),
+            created=fake.date_time(),
+            updated=fake.date_time(),
+        )
+
+
+class ApiKey(ApiKeyRecord):
+    @classmethod
+    def random(
+        cls, project_id: ULID | str, api_key: Optional[str] = None, capability: Optional[str] = None
+    ):
+        return cls(
+            api_key_id=api_key if api_key else fake.api_key_id(),
+            project_id=project_id,
+            display=fake.display("API Key"),
+            capability=capability if capability else fake.api_key_capability(),
+            deactivated=None,
+            last_used=fake.date_time(),
+            created=fake.date_time(),
+            updated=fake.date_time(),
+        )
+
+
+class Participant(ParticipantRecord):
+    @classmethod
+    def random(cls, project_id: ULID | str):
+        return cls(
+            project_id=project_id,
+            participant_id=fake.ulid(),
+            display=fake.name(),
+            image=fake.image_url(),
+            external_id=fake.external_id(),
+            extra=fake.pydict(),
+            created=fake.date_time(),
+            updated=fake.date_time(),
+        )
+
+
+class Progress(ProgressRecord, NextIdCounter):
+    @classmethod
+    def random(cls, achievement_id: ULID | str, participant_id: ULID | str):
+        progress_id: int = cls.next_id()
+        return cls(
+            progress_id=progress_id,
+            achievement_id=achievement_id,
+            participant_id=participant_id,
+            value=fake.pyint(),
+            recorded=fake.date_time(),
+        )
+
+
+class Project(ProjectRecord):
+    @classmethod
+    def random(cls, user_id: str):
+        return cls(
+            user_id=user_id,
+            project_id=fake.ulid(),
+            display=fake.display("Project"),
+            created=fake.date_time(),
+            updated=fake.date_time(),
+        )
+
+
+class Score(ScoreRecord, NextIdCounter):
+    @classmethod
+    def random(cls, scoreboard_id: ULID | str, participant_id: ULID | str):
+        score_id: int = cls.next_id()
+        return cls(
+            scoreboard_id=scoreboard_id,
+            participant_id=participant_id,
+            value=fake.pyint(),
+            recorded=fake.date_time(),
+            score_id=score_id,
+        )
+
+
+class Scoreboard(ScoreboardRecord):
+    @classmethod
+    def random(cls, project_id: ULID | str, public: bool = False):
+        return cls(
+            project_id=project_id,
+            scoreboard_id=fake.ulid(),
+            display=fake.display("Scoreboard"),
+            rank_dir=fake.rank_dir(),
+            public=public,
+            extra=fake.pydict(),
+            created=fake.date_time(),
+            updated=fake.date_time(),
+        )
+
+
+class User(UserRecord):
+    @classmethod
+    def random(cls):
+        return cls(
+            user_id=fake.ulid(),
+            display=fake.name(),
+            email=fake.email(),
+            db="db1",
+            created=fake.date_time(),
+            updated=fake.date_time(),
+        )
 
 
 class Model:
@@ -60,7 +179,7 @@ class Model:
         return dict((k, []) for k in cls.storage_keys)
 
     @classmethod
-    def random(cls, user_count=1, user_project_count=1, api_key_count=1) -> dict:
+    def random(cls, user_count=3, user_project_count=3, api_key_count=10) -> dict:
         db = cls.default()
         db["user"] = users = [User.random() for _ in range(user_count)]
         projects = db["project"]
@@ -79,10 +198,7 @@ class Model:
 
             for project in user_projects:
                 api_keys.extend(
-                    [
-                        ApiKey.random(project_id=project.project_id, capability="rw")
-                        for _ in range(api_key_count)
-                    ]
+                    [ApiKey.random(project_id=project.project_id) for _ in range(api_key_count)]
                 )
 
                 project_achievements = [

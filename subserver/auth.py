@@ -26,9 +26,8 @@ from typing import Optional, Sequence, Set
 
 from flask import Flask, request
 
-from .apikey import ApiKey
 from .http import get_api_key, get_project_id, get_resource_id, okay, unauthorized
-from .model import Model
+from .model import ApiKey, Model
 
 
 class Auth:
