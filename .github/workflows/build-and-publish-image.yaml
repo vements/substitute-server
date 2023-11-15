@@ -49,6 +49,6 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
           repository: vements/substitute-server
-          readme-filepath: ./readme.metadata
+          readme-filepath: ./readme.md
           short-description: ${{ github.event.repository.description }}
           enable-url-completion: true
