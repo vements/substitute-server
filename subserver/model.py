@@ -149,7 +149,6 @@ class User(UserRecord):
             user_id=fake.ulid(),
             display=fake.name(),
             email=fake.email(),
-            db="db1",
             created=fake.date_time(),
             updated=fake.date_time(),
         )

@@ -32,7 +32,6 @@ class User:
     user_id: str
     email: str
     display: str
-    db: str
     created: datetime
     updated: datetime
     deleted: Optional[datetime]
@@ -42,7 +41,6 @@ class User:
         user_id: str,
         email: str,
         display: str,
-        db: str,
         created: Optional[datetime] = None,
         updated: Optional[datetime] = None,
         deleted: Optional[datetime] = None,
@@ -50,7 +48,6 @@ class User:
         self.user_id = user_id
         self.email = email
         self.display = display
-        self.db = db
         self.created = created or datetime.now()
         self.updated = updated or datetime.now()
         self.deleted = deleted
