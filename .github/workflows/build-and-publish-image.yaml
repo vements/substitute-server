@@ -6,6 +6,7 @@ on:
       - 'subserver/**'
       - 'requirements.txt'
       - 'dockerfile'
+      - 'readme.md'
 
 
 jobs:
